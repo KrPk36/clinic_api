@@ -17,7 +17,19 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
 
-        return self.create_user(email, password, **extra_fields)
+        su_user = self.create_user(email, password, **extra_fields)
+
+        # Import here to avoid issues if the Group table doesn't exist yet
+        try:
+            from django.contrib.auth.models import Group
+            admin_group, _ = Group.objects.get_or_create(name="Admin")
+            su_user.groups.add(admin_group)
+        except Exception:
+            # If the auth tables aren't ready yet, skip silently.
+            # The superuser can be added to the group manually afterwards.
+            pass
+
+        return su_user
 
 class User(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(max_length=50, unique=False, blank=False, null=False)
