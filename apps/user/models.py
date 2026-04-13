@@ -48,5 +48,27 @@ class User(AbstractBaseUser, PermissionsMixin):
     def username(self):
         return self.get_username()
     
+    def get_full_name(self):
+        return f"{self.first_name} {self.last_name}"
+    
     def __str__(self):
-        return f"{self.email} ({self.first_name} {self.last_name})"
+        return f"{self.first_name} {self.last_name} ({self.email})"
+
+class GenderChoices(models.TextChoices):
+    MALE = "M", "Male"
+    FEMALE = "F", "Female"
+    OTHER = "O", "Other"
+    PREFER_NOT_TO_SAY = "N", "Prefer not to say"
+
+class PatientProfile(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="patient_profile",
+    )
+    date_of_birth = models.DateField()
+    phone = models.CharField(max_length=20)
+    gender = models.CharField(max_length=1, choices=GenderChoices.choices)
+
+    def __str__(self):
+        return f"Patient: {self.user.get_full_name()}"

@@ -2,7 +2,7 @@ from django.urls import path
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse, OpenApiExample
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
-from .views import EmailTokenObtainPairView
+from .views import EmailTokenObtainPairView, PatientRegisterView
 
 # Patch TokenRefreshView
 extend_schema_view(
@@ -37,4 +37,5 @@ urlpatterns = [
     path('login/', EmailTokenObtainPairView.as_view(), name='login'),
     path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('verify/', TokenVerifyView.as_view(), name='token_verify'),
+    path('register/', PatientRegisterView.as_view(), name="patient_register"),
 ]

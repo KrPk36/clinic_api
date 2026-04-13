@@ -1,7 +1,11 @@
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import EmailTokenObtainPairSerializer, TokenResponseSerializer
+from .serializers import EmailTokenObtainPairSerializer, TokenResponseSerializer, PatientCreateSerializer, PatientReadSerializer
 
 @extend_schema_view(
     post=extend_schema(
@@ -22,3 +26,34 @@ from .serializers import EmailTokenObtainPairSerializer, TokenResponseSerializer
 )
 class EmailTokenObtainPairView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
+
+@extend_schema_view(
+    post=extend_schema(
+    summary="Self register as a patient",
+    description=(
+        "Register a new user based on the provided data.\n\n"
+        "Users created through this endpoint are always registered as \"Patient\"."
+    ),
+    request=PatientCreateSerializer,
+    responses={
+        201: OpenApiResponse(
+            response=PatientReadSerializer,
+            description="Patient successfully registered."
+        ),
+        400: OpenApiResponse(description="Invalid data."),
+    },
+    tags=["Auth"])
+)
+class PatientRegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PatientCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            profile = serializer.save()
+            read_serializer = PatientReadSerializer(profile.user)
+            return Response(
+                read_serializer.data,
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
