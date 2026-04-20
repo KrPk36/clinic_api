@@ -64,4 +64,4 @@ class IsAdminOrReadOnly(BasePermission):
         if not request.user or not request.user.is_authenticated:
             raise AuthenticationFailed("Authentication credentials were not provided or token has expired.")
         
-        return request.user.groups.filter(name="Admin").exists()
+        return request.user.groups.filter(name="Admin").exists() or request.user.is_superuser

@@ -26,13 +26,6 @@ class TokenResponseSerializer(serializers.Serializer):
     access = serializers.CharField(help_text="JWT access token")
     refresh = serializers.CharField(help_text="JWT refresh token")
 
-class PatientProfileReadSerializer(serializers.ModelSerializer):
-    gender_display = serializers.CharField(source="get_gender_display", read_only=True)
-
-    class Meta:
-        model = PatientProfile
-        fields = ["date_of_birth", "phone", "gender", "gender_display"]
-
 class PatientReadSerializer(serializers.ModelSerializer):
     date_of_birth = serializers.DateField(
         source="patient_profile.date_of_birth", read_only=True
@@ -50,23 +43,23 @@ class PatientReadSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
-            "date_joined",
-            "phone",
             "date_of_birth",
             "gender",
+            "phone",
+            "date_joined",
         ]
 
 class PatientCreateSerializer(serializers.Serializer):
     # User fields
     email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
     first_name = serializers.CharField()
     last_name = serializers.CharField()
-    password = serializers.CharField(write_only=True)
 
     # Patient profile fields
     date_of_birth = serializers.DateField()
-    phone = serializers.CharField()
     gender = serializers.ChoiceField(choices=GenderChoices.choices)
+    phone = serializers.CharField()
 
     @transaction.atomic
     def create(self, validated_data):

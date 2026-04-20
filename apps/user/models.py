@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
 
+from apps.common.models import GenderChoices
+
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -53,12 +55,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.email})"
-
-class GenderChoices(models.TextChoices):
-    MALE = "M", "Male"
-    FEMALE = "F", "Female"
-    OTHER = "O", "Other"
-    PREFER_NOT_TO_SAY = "N", "Prefer not to say"
 
 class PatientProfile(models.Model):
     user = models.OneToOneField(

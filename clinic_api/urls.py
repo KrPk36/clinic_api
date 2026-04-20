@@ -6,7 +6,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include("apps.user.urls")),
     path('api/', include("apps.specialties.urls")),
-
+    path('api/', include("apps.doctors.urls")),
 
     # drf-spectacular: schema + documentation UIs
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
