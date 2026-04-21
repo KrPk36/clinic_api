@@ -6,7 +6,7 @@ from apps.user.models import User
 from apps.specialties.models import Specialty
 from apps.specialties.serializers import SpecialtySerializer
 
-from .models import DoctorProfile
+from .models import DoctorProfile, AvailabilitySchedule
 
 
 class DoctorReadSerializer(serializers.ModelSerializer):
@@ -42,6 +42,7 @@ class DoctorSerializer(serializers.Serializer):
             password=validated_data["password"],
             first_name=validated_data["first_name"],
             last_name=validated_data["last_name"],
+            is_staff=True,
         )
 
         doctor_group = Group.objects.get(name="Doctor")
@@ -75,3 +76,38 @@ class DoctorSerializer(serializers.Serializer):
         if specialties is not None:
             instance.specialties.set(specialties)
         return instance
+
+class AvailabilityScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AvailabilitySchedule
+        fields = ["id", "day_of_week", "start_time", "end_time", "effective_until"]
+
+    def validate(self, data):
+        doctor = self.context.get("doctor")
+        day = data.get("day_of_week", getattr(self.instance, "day_of_week", None))
+        start = data.get("start_time", getattr(self.instance, "start_time", None))
+        end = data.get("end_time", getattr(self.instance, "end_time", None))
+        effective_until = data.get("effective_until", getattr(self.instance, "effective_until", None))
+
+        # end_time must be after start_time
+        if start and end and end <= start:
+            raise serializers.ValidationError("end_time must be after start_time.")
+
+        # Check for overlapping blocks on the same doctor and day
+        overlapping = AvailabilitySchedule.objects.filter(
+            doctor=doctor,
+            day_of_week=day,
+            start_time__lt=end,
+            end_time__gt=start,
+            effective_until=effective_until
+        )
+        
+        if self.instance:
+            overlapping = overlapping.exclude(pk=self.instance.pk)
+
+        if overlapping.exists():
+            raise serializers.ValidationError(
+                "This schedule block overlaps with an existing one."
+            )
+
+        return data

@@ -1,7 +1,6 @@
 from django.db import models
 from django.conf import settings
 
-from apps.common.models import GenderChoices
 
 class DoctorProfile(models.Model):
     user = models.OneToOneField(
@@ -9,7 +8,6 @@ class DoctorProfile(models.Model):
         on_delete=models.CASCADE,
         related_name="doctor_profile",
     )
-    gender = models.CharField(max_length=1, choices=GenderChoices.choices)
     bio = models.TextField(blank=True)
     phone = models.CharField(max_length=20)
     is_active = models.BooleanField(default=True)
@@ -41,6 +39,7 @@ class AvailabilitySchedule(models.Model):
     day_of_week = models.PositiveSmallIntegerField(choices=DAY_CHOICES)
     start_time = models.TimeField()
     end_time = models.TimeField()
+    effective_until = models.DateField(null=True, blank=True)
 
     class Meta:
         # Prevents overlapping blocks at the DB constraint level

@@ -65,3 +65,43 @@ class IsAdminOrReadOnly(BasePermission):
             raise AuthenticationFailed("Authentication credentials were not provided or token has expired.")
         
         return request.user.groups.filter(name="Admin").exists() or request.user.is_superuser
+
+class IsAdminOrDoctorOwner(BasePermission):
+    """
+    Full acces for Admin users.
+    Read-only access (GET, HEAD, OPTIONS) for everyone else, including
+    unauthenticated requests.
+    - POST, PUT, PATCH, DELETE: admin or the doctor who owns the schedule.
+
+    Intended for management of Availability Schedules
+    """
+
+    def has_permission(self, request, view):
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            return True
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        # For POST, the doctor can only create schedules for themselves
+        # (enforced by checking the doctor_pk in the URL matches their own profile)
+        if request.method == "POST":
+            doctor_pk = view.kwargs.get("doctor_pk")
+            return (
+                hasattr(request.user, "doctor_profile")
+                and request.user.doctor_profile.pk == int(doctor_pk)
+            )
+        # PUT, PATCH, DELETE fall through to has_object_permission
+        return hasattr(request.user, "doctor_profile")
+
+    def has_object_permission(self, request, view, obj):
+        # Safe methods already cleared in has_permission
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            return True
+        if request.user.is_superuser:
+            return True
+        # Doctor can only modify their own schedule blocks
+        return (
+            hasattr(request.user, "doctor_profile")
+            and obj.doctor == request.user.doctor_profile
+        )
