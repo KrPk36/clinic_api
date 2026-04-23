@@ -1,6 +1,10 @@
 from django.db import models
-from django.conf import settings
 
+from apps.doctors.models import DoctorProfile
+from apps.user.models import PatientProfile
+
+
+SLOT_DURATION_MINUTES = 30
 
 class Appointment(models.Model):
     class Status(models.TextChoices):
@@ -9,12 +13,12 @@ class Appointment(models.Model):
         COMPLETED = "completed", "Completed"
 
     patient = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        PatientProfile,
         on_delete=models.CASCADE,
         related_name="appointments_as_patient",
     )
     doctor = models.ForeignKey(
-        "doctors.DoctorProfile",
+        DoctorProfile,
         on_delete=models.CASCADE,
         related_name="appointments",
     )

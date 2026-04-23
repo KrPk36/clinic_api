@@ -3,7 +3,7 @@ from drf_spectacular.types import OpenApiTypes
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 
-from apps.common.permissions import IsAdminOrReadOnly, IsAdminOrDoctorOwner
+from apps.common.permissions import IsAdminOrReadOnly, AvailabilitySchedulesPermission
 
 from .models import DoctorProfile, AvailabilitySchedule
 from .serializers import DoctorReadSerializer, DoctorSerializer, AvailabilityScheduleSerializer
@@ -132,12 +132,10 @@ DOCTOR_PK_PARAMETER = OpenApiParameter(
 @extend_schema_view(
     list=extend_schema(
         summary="List all schedule blocks for a doctor.",
-        description="Returns all availability schedule blocks for a given doctor. **Admin or doctor owner only.**",
+        description="Returns all availability schedule blocks for a given doctor.",
         parameters=[DOCTOR_PK_PARAMETER],
         responses={
             200: AvailabilityScheduleSerializer(many=True),
-            401: OpenApiResponse(description="Authentication credentials were not provided or token has expired."),
-            403: OpenApiResponse(description="User is not an Admin or the doctor owner."),
             404: OpenApiResponse(description="Doctor not found."),
         },
         tags=["Availability Schedules"],
@@ -148,8 +146,6 @@ DOCTOR_PK_PARAMETER = OpenApiParameter(
         parameters=[DOCTOR_PK_PARAMETER],
         responses={
             200: AvailabilityScheduleSerializer,
-            401: OpenApiResponse(description="Authentication credentials were not provided or token has expired."),
-            403: OpenApiResponse(description="User is not an Admin or the doctor owner."),
             404: OpenApiResponse(description="Schedule block not found."),
         },
         tags=["Availability Schedules"],
@@ -224,7 +220,7 @@ DOCTOR_PK_PARAMETER = OpenApiParameter(
     ),
 )
 class AvailabilityScheduleViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdminOrDoctorOwner]
+    permission_classes = [AvailabilitySchedulesPermission]
     serializer_class = AvailabilityScheduleSerializer
     queryset = AvailabilitySchedule.objects.none()
 

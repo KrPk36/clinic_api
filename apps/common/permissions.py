@@ -66,7 +66,7 @@ class IsAdminOrReadOnly(BasePermission):
         
         return request.user.groups.filter(name="Admin").exists() or request.user.is_superuser
 
-class IsAdminOrDoctorOwner(BasePermission):
+class AvailabilitySchedulesPermission(BasePermission):
     """
     Full acces for Admin users.
     Read-only access (GET, HEAD, OPTIONS) for everyone else, including
@@ -105,3 +105,48 @@ class IsAdminOrDoctorOwner(BasePermission):
             hasattr(request.user, "doctor_profile")
             and obj.doctor == request.user.doctor_profile
         )
+
+class AppointmentsPermission(BasePermission):
+    """ 
+    - list, retrieve: authenticated patients or doctors (own records only,
+      enforced at the queryset level).
+    - create: patients only.
+    - cancel: patients only (own appointment, enforced at object level).
+    - complete: doctors or admins (own appointment for doctors,
+      enforced at object level).
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        
+        is_patient = hasattr(request.user, "patient_profile")
+        is_doctor = hasattr(request.user, "doctor_profile")
+
+        if view.action in ["list", "retrieve"]:
+            return is_patient or is_doctor or request.user.is_superuser
+        
+        if view.action in ["create", "cancel"]:
+            return is_patient
+        
+        if view.action == "complete":
+            return is_doctor or request.user.is_superuser
+        
+        return False
+    
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+
+        is_patient = hasattr(request.user, "patient_profile")
+        is_doctor = hasattr(request.user, "doctor_profile")
+
+        if view.action in "cancel":
+            return is_patient and obj.patient == request.user.patient_profile
+        
+        if view.action == "complete":
+            return (is_doctor and obj.doctor == request.user.doctor_profile) or request.user.is_superuser
+        
+        if view.action == "retrieve":
+            return True
+        
+        return False
