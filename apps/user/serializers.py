@@ -1,8 +1,12 @@
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth import authenticate
 from django.db import transaction
+from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.types import OpenApiTypes
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
+
+from apps.doctors.serializers import DoctorReadSerializer
 
 from .models import User, PatientProfile, GenderChoices
 
@@ -27,26 +31,16 @@ class TokenResponseSerializer(serializers.Serializer):
     refresh = serializers.CharField(help_text="JWT refresh token")
 
 class PatientReadSerializer(serializers.ModelSerializer):
-    date_of_birth = serializers.DateField(
-        source="patient_profile.date_of_birth", read_only=True
-    )
     gender = serializers.CharField(
-        source="patient_profile.get_gender_display", read_only=True
-    )
-    phone = serializers.CharField(
-        source="patient_profile.phone", read_only=True
+        source="get_gender_display", read_only=True
     )
 
     class Meta:
-        model = User
+        model = PatientProfile
         fields = [
-            "email",
-            "first_name",
-            "last_name",
             "date_of_birth",
             "gender",
             "phone",
-            "date_joined",
         ]
 
 class PatientCreateSerializer(serializers.Serializer):
@@ -86,3 +80,43 @@ class PatientCreateSerializer(serializers.Serializer):
         )
 
         return profile
+
+class UserProfileReadSerializer(serializers.ModelSerializer):
+    profile = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ["email", "first_name", "last_name", "date_joined", "profile"]
+    
+    @extend_schema_field(OpenApiTypes.OBJECT)
+    def get_profile(self, obj):
+        if hasattr(obj, "patient_profile"):
+            return PatientReadSerializer(obj.patient_profile).data
+        if hasattr(obj, "doctor_profile"):
+            return DoctorReadSerializer(obj.doctor_profile).data
+        return None
+
+class UserProfileUpdateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
+    password = serializers.CharField(required=False, write_only=True)
+    phone = serializers.CharField(required=False)
+
+    def update(self, instance, validated_data):
+        instance.first_name = validated_data.get("first_name", instance.first_name)
+        instance.last_name = validated_data.get("last_name", instance.last_name)
+        if "password" in validated_data:
+            instance.set_password(validated_data["password"])
+        instance.save()
+
+        # Update phone on whichever profile exists
+        phone = validated_data.get("phone")
+        if phone:
+            if hasattr(instance, "patient_profile"):
+                instance.patient_profile.phone = phone
+                instance.patient_profile.save(update_fields=["phone"])
+            elif hasattr(instance, "doctor_profile"):
+                instance.doctor_profile.phone = phone
+                instance.doctor_profile.save(update_fields=["phone"])
+
+        return instance

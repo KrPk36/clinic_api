@@ -37,8 +37,8 @@ services:
       DATABASE_USER: ${POSTGRES_USER}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       API_SECRET_KEY: ${API_SECRET_KEY}
-    volumes:
-      - .:/app   # bind-mount for hot-reload (changes on host reflect immediately)
+    # volumes:
+      # - .:/app   # bind-mount for hot-reload (changes on host reflect immediately)
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
