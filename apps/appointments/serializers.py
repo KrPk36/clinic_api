@@ -13,7 +13,7 @@ class AppointmentReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Appointment
-        fields = ["id", "doctors_name", "patients_name", "date", "start_time", "end_time", "status"]
+        fields = ["id", "doctors_name", "patients_name", "date", "start_time", "end_time", "status", "notes"]
 
 def validate_slot_boundary(value):
     if value.minute not in (0, 30) or value.second != 0:
@@ -94,7 +94,7 @@ class AppointmentCreateSerializer(serializers.Serializer):
         )
         return appointment
 
-class AppointmentPatchSerializer(serializers.Serializer):
+class AppointmentCancelSerializer(serializers.Serializer):
     def cancel(self):
         pk = self.context.get("pk")
         appointment = Appointment.objects.get(pk=pk)
@@ -112,6 +112,9 @@ class AppointmentPatchSerializer(serializers.Serializer):
         appointment.save(update_fields=["status"])
         return appointment
 
+class AppointmentCompleteSerializer(serializers.Serializer):
+    notes = serializers.CharField(required=False, allow_blank=True)
+
     def complete(self):
         pk = self.context.get("pk")
         appointment = Appointment.objects.get(pk=pk)
@@ -126,6 +129,8 @@ class AppointmentPatchSerializer(serializers.Serializer):
             )
 
         appointment.status = Appointment.Status.COMPLETED
-        appointment.save(update_fields=["status"])
+        if "notes" in self.validated_data:
+            appointment.notes = self.validated_data["notes"]
+        appointment.save(update_fields=["status", "notes"])
         return appointment
     

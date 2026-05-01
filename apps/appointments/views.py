@@ -8,7 +8,7 @@ from rest_framework.viewsets import GenericViewSet
 from apps.common.permissions import AppointmentsPermission
 
 from .models import Appointment
-from .serializers import AppointmentReadSerializer, AppointmentCreateSerializer, AppointmentPatchSerializer
+from .serializers import AppointmentReadSerializer, AppointmentCreateSerializer, AppointmentCancelSerializer, AppointmentCompleteSerializer
 
 @extend_schema_view(
     list=extend_schema(
@@ -81,8 +81,10 @@ class AppointmentViewSet(mixins.CreateModelMixin,
     def get_serializer_class(self):
         if self.action == "create":
             return AppointmentCreateSerializer
-        if self.action in ["cancel", "complete"]:
-            return AppointmentPatchSerializer
+        if self.action == "cancel":
+            return AppointmentCancelSerializer
+        if self.action == "complete":
+            return AppointmentCompleteSerializer
         return AppointmentReadSerializer
         
     def create(self, request, *args, **kwargs):
@@ -99,7 +101,7 @@ class AppointmentViewSet(mixins.CreateModelMixin,
     @action(detail=True, methods=["patch"], url_path="cancel")
     def cancel(self, request, pk=None):
         appointment = self.get_object()
-        patch_serializer = AppointmentPatchSerializer(
+        patch_serializer = AppointmentCancelSerializer(
             context={"pk":appointment.pk}
         )
         appointment = patch_serializer.cancel()
@@ -109,9 +111,11 @@ class AppointmentViewSet(mixins.CreateModelMixin,
     @action(detail=True, methods=["patch"], url_path="complete")
     def complete(self, request, pk=None):
         appointment = self.get_object()
-        patch_serializer = AppointmentPatchSerializer(
+        patch_serializer = AppointmentCompleteSerializer(
+            data=request.data,
             context={"pk":appointment.pk}
         )
+        patch_serializer.is_valid(raise_exception=True)
         appointment = patch_serializer.complete()
         read_serializer = AppointmentReadSerializer(appointment)
         return Response(read_serializer.data, status=status.HTTP_200_OK)
