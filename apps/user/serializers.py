@@ -55,6 +55,13 @@ class PatientCreateSerializer(serializers.Serializer):
     gender = serializers.ChoiceField(choices=GenderChoices.choices)
     phone = serializers.CharField()
 
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "A user with this email already exists."
+            )
+        return value
+
     @transaction.atomic
     def create(self, validated_data):
         # specialties = validated_data.pop("specialties")

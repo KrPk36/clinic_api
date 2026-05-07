@@ -33,6 +33,13 @@ class DoctorSerializer(serializers.Serializer):
         source="specialties"
     )
 
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "A user with this email already exists."
+            )
+        return value
+
     @transaction.atomic
     def create(self, validated_data):
         specialties = validated_data.pop("specialties")

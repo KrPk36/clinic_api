@@ -6,6 +6,11 @@
 
 set -e
 
+echo "==> Waiting for database..."
+until pg_isready -h "${DATABASE_HOST}" -p "${DATABASE_PORT}" -U "${DATABASE_USER}"; do
+  sleep 1
+done
+
 echo "==> Applying database migrations..."
 python manage.py migrate --noinput
 
