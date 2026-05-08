@@ -4,6 +4,7 @@ A RESTful API for a fictional medical clinic, built as a portfolio project to de
 
 The system supports the full lifecycle of clinic operations: patient self-registration, doctor and specialty management, weekly availability scheduling, appointment booking, and role-based access control. All documented through an auto-generated Swagger UI.
 
+![CI](https://github.com/KrPk36/clinic_api/actions/workflows/ci.yml/badge.svg)
 ---
 
 ## Table of Contents

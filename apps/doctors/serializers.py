@@ -1,7 +1,8 @@
 from django.contrib.auth.models import Group
 from django.db import transaction
+from django.db.models import Q
 from rest_framework import serializers
-
+from datetime import date
 from apps.user.models import User
 from apps.specialties.models import Specialty
 from apps.specialties.serializers import SpecialtySerializer
@@ -106,7 +107,8 @@ class AvailabilityScheduleSerializer(serializers.ModelSerializer):
             day_of_week=day,
             start_time__lt=end,
             end_time__gt=start,
-            effective_until=effective_until
+        ).filter(
+            Q(effective_until__isnull=True)|Q(effective_until__gte=date.today())
         )
         
         if self.instance:

@@ -1,5 +1,7 @@
 import pytest, datetime
 
+from apps.user.models import User
+
 @pytest.mark.django_db
 class TestPatientRegistration:
     # Successful register as a patient
@@ -28,6 +30,22 @@ class TestPatientRegistration:
         assert response.data["profile"]["date_of_birth"] == "1999-02-15"
         assert response.data["profile"]["gender"] == "Female"
         assert response.data["profile"]["phone"] == "55-9000-100"
+    
+    def test_created_user_assigned_to_patient_group(self, api_client):
+        response = api_client.post(
+            "/auth/register/",
+            {
+                "email":"new@example.com",
+                "password":"Test1234!",
+                "first_name":"New",
+                "last_name":"Patient",
+                "date_of_birth":"1999-02-15",
+                "phone":"55-9000-100",
+                "gender":"F"
+            }
+        )
+        user = User.objects.get(email="new@example.com")
+        assert user.groups.filter(name="Patient").exists()
 
     
     # Register fails if email is already in use
