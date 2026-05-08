@@ -42,7 +42,7 @@ def doctor_user(db):
 
 @pytest.fixture
 def patient_user(db):
-    user:User = User.objects.create(
+    user:User = User.objects.create_user(
         email="patient@example.com",
         password="Patient1234!",
         first_name="Test",
@@ -67,7 +67,7 @@ def schedule(db, doctor_user):
     )
 
 @pytest.fixture
-def future_monday(db):
+def future_monday():
     today = datetime.date.today()
     days_ahead = 0 - today.weekday()
     if days_ahead <= 0:

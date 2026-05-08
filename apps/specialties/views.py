@@ -1,5 +1,6 @@
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.response import Response
 
 from apps.common.permissions import IsAdminOrReadOnly
 
@@ -65,6 +66,7 @@ from .serializers import SpecialtySerializer
             401: OpenApiResponse(description="Authentication credentials were not provided or token has expired"),
             403: OpenApiResponse(description="User is not an Admin."),
             404: OpenApiResponse(description="Specialty not found."),
+            409: OpenApiResponse(description="Specialty has assigned doctors"),
         },
         tags=["Specialties"],
     ),
@@ -73,3 +75,12 @@ class SpecialtyViewSet(viewsets.ModelViewSet):
     queryset = Specialty.objects.all().order_by("name")
     serializer_class = SpecialtySerializer
     permission_classes = [IsAdminOrReadOnly]
+
+    def destroy(self, request, *args, **kwargs):
+        specialty = self.get_object()
+        if not specialty.can_delete:
+            return Response(
+                {"detail": "Cannot delete a specialty with assigned doctors"},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return super().destroy(request, *args, **kwargs)

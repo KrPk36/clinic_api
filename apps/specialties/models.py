@@ -7,6 +7,10 @@ class Specialty(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def can_delete(self):
+        return not self.doctors.exists()
+
     class Meta:
         verbose_name = "Specialty"
         verbose_name_plural = "Specialties"

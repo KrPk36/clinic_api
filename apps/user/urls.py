@@ -41,7 +41,7 @@ me_view = UserProfileView.as_view({
 urlpatterns = [
     path('login/', EmailTokenObtainPairView.as_view(), name='login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('verify/', TokenVerifyView.as_view(), name='token_verify'),
+    path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('register/', PatientRegisterView.as_view(), name="patient_register"),
     path('me/', me_view, name="me"),
 ]
