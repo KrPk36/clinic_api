@@ -1,9 +1,13 @@
+from datetime import date, timedelta, datetime
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, extend_schema_view
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.common.permissions import IsAdminOrReadOnly, AvailabilitySchedulesPermission
+from apps.appointments.models import SLOT_DURATION_MINUTES, Appointment
 
 from .models import DoctorProfile, AvailabilitySchedule
 from .serializers import DoctorReadSerializer, DoctorSerializer, AvailabilityScheduleSerializer
@@ -31,6 +35,24 @@ from .serializers import DoctorReadSerializer, DoctorSerializer, AvailabilitySch
             200: DoctorReadSerializer,
             404: OpenApiResponse(description="Doctor not found."),
         },
+        tags=["Doctors"],
+    ),
+    available_slots=extend_schema(
+        summary="Shows the available slots of the doctor on a given date.",
+        description="Lists all available times to make an appointment with the selected doctor according to the date provided.",
+        responses={
+            200: OpenApiResponse(description="Available slots."),
+            400: OpenApiResponse(description="Invalid data.")
+        },
+        parameters=[
+            OpenApiParameter(
+                name="date",
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.QUERY,
+                description="Query available slots for the given date.",
+                required=True,
+            )
+        ],
         tags=["Doctors"],
     ),
     create=extend_schema(
@@ -120,6 +142,67 @@ class DoctorViewSet(viewsets.ModelViewSet):
             {"detail": "Doctor successfully removed from the list."},
             status=status.HTTP_204_NO_CONTENT,
         )
+
+    @action(detail=True, methods=["get"], url_path="available_slots")
+    def available_slots(self, request, pk=None):
+        doctor = self.get_object()
+
+        date_param = request.query_params.get("date")
+        if not date_param:
+            return Response(
+                {"detail":"Query parameter 'date' is required (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            requested_date = date.fromisoformat(date_param)
+        except ValueError:
+            return Response(
+                {"detail":"Invalid date format. Use YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if requested_date < date.today():
+            return Response(
+                {"detail":"Cannot search available slots for past date."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        weekday = requested_date.weekday()
+        schedules = doctor.schedules.filter(
+            day_of_week=weekday
+        ).filter(
+            Q(effective_until__isnull=True) | Q(effective_until__gte=requested_date)
+        )
+
+        if not schedules.exists():
+            return Response({
+                "date":requested_date,
+                "available_slots":[]
+            })
+
+        slot_duration = timedelta(minutes=SLOT_DURATION_MINUTES)
+        all_slots = set()
+
+        for schedule in schedules:
+            next_slot = datetime.combine(requested_date, schedule.start_time)
+            end_time = datetime.combine(requested_date, schedule.end_time)
+            while end_time >= next_slot + slot_duration:
+                all_slots.add(next_slot.time())
+                next_slot += slot_duration
+        
+        # Exclude already booked slots
+        already_booked_slots = set(Appointment.objects.filter(
+            doctor=doctor,
+            date=requested_date,
+            status=Appointment.Status.SCHEDULED
+        ).values_list("start_time", flat=True))
+
+        available_slots_set = sorted(all_slots - already_booked_slots)
+
+        return Response({
+            "date": requested_date,
+            "available_slots": [time_.strftime("%H:%M") for time_ in available_slots_set]
+        })
 
 DOCTOR_PK_PARAMETER = OpenApiParameter(
     name="doctor_pk",

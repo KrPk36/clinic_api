@@ -31,6 +31,7 @@ The system supports the full lifecycle of clinic operations: patient self-regist
 | Auth | djangorestframework-simplejwt |
 | API Docs | drf-spectacular (OpenAPI 3.0 / Swagger UI) |
 | Containerization | Docker + Docker Compose |
+| Testing | pytest |
 
 ---
 
@@ -170,6 +171,7 @@ Full interactive documentation is available at `/api/docs/`. Below is a summary 
 | `POST` | `/register/` | Public | Patient self-registration |
 | `POST` | `/login/` | Public | Obtain JWT access + refresh tokens. |
 | `POST` | `/token/refresh/` | Public | Refresh access token. |
+| `POST` | `/token/verify` | Public | Verify the validity of token. |
 | `GET` | `/me/` | Any auth | View own profile |
 | `PATCH` | `/me/` | Any auth | Update own profile (name, phone, password) |
 
@@ -239,6 +241,7 @@ clinic_api/
 │   ├── specialties/         # Specialty model and views
 │   ├── doctors/             # DoctorProfile, schedules, available slots
 │   └── appointments/        # Appointment model and views
+├── tests/                   # Tests definitions and fixtures for pytest
 ├── compose.yaml
 ├── Dockerfile
 ├── manage.py

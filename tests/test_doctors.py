@@ -1,6 +1,7 @@
 from django.contrib.auth.models import Group
 import pytest
 
+from apps.appointments.models import Appointment
 from apps.doctors.models import DoctorProfile, AvailabilitySchedule
 from apps.specialties.models import Specialty
 from apps.user.models import User
@@ -201,6 +202,88 @@ class TestScheduleValidation:
         response = doctor_client.post(
             f"/api/doctors/{doctor_user.doctor_profile.pk}/schedules/",
             {"day_of_week": 1, "start_time": "13:00", "end_time": "09:00"},
+        )
+
+        assert response.status_code == 400
+
+@pytest.mark.django_db
+class TestAvailableSlots:
+    # schedule fixture goes form 9:00 - 13:00
+
+    def test_returns_all_slots_when_no_appointments(self, api_client, doctor_user, schedule, future_monday):
+        response = api_client.get(
+            f'/api/doctors/{doctor_user.doctor_profile.pk}/available_slots/?date={future_monday.isoformat()}'
+        )
+
+        assert response.status_code == 200
+        assert response.data["available_slots"] == [
+            "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30"
+        ]
+    
+    # appointment fixture booked at 09:00
+    def test_booked_slot_not_in_list(self, api_client, doctor_user, schedule, appointment, future_monday):
+        response = api_client.get(
+            f'/api/doctors/{doctor_user.doctor_profile.pk}/available_slots/?date={future_monday.isoformat()}'
+        )
+
+        assert response.status_code == 200
+        assert response.data["available_slots"] == [
+            "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30"
+        ]
+    
+    def test_slot_not_listed_after_booking_appointment(self, api_client, patient_user, doctor_user, schedule, future_monday):
+        Appointment.objects.create(
+            patient=patient_user.patient_profile,
+            doctor=doctor_user.doctor_profile,
+            date=future_monday,
+            start_time="10:00",
+            end_time="10:30",
+            status=Appointment.Status.SCHEDULED
+        )
+        response = api_client.get(
+            f'/api/doctors/{doctor_user.doctor_profile.pk}/available_slots/?date={future_monday.isoformat()}'
+        )
+        assert response.status_code == 200
+        assert response.data["available_slots"] == [
+            "09:00", "09:30", "10:30", "11:00", "11:30", "12:00", "12:30"
+        ]
+    
+    def test_cancelled_appointment_does_not_block_slot(self, api_client, patient_user, doctor_user, schedule, future_monday):
+        Appointment.objects.create(
+            patient=patient_user.patient_profile,
+            doctor=doctor_user.doctor_profile,
+            date=future_monday,
+            start_time="10:00",
+            end_time="10:30",
+            status=Appointment.Status.CANCELLED
+        )
+        response = api_client.get(
+            f'/api/doctors/{doctor_user.doctor_profile.pk}/available_slots/?date={future_monday.isoformat()}'
+        )
+        assert response.status_code == 200
+        assert response.data["available_slots"] == [
+            "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30"
+        ]
+
+    def test_no_schedule_on_requested_day_returns_empty(self, api_client, doctor_user, schedule):
+        # schedule fixture is Monday, so Sunday should have nothing
+        from datetime import date, timedelta
+
+        today = date.today()
+        days_ahead = (6 - today.weekday()) % 7
+        if days_ahead == 0:
+            days_ahead = 7  # not today, always a future date
+        next_sunday = today + timedelta(days=days_ahead)
+        response = api_client.get(
+            f"/api/doctors/{doctor_user.doctor_profile.pk}/available_slots/?date={next_sunday.isoformat()}"
+        )
+
+        assert response.status_code == 200
+        assert response.data["available_slots"] == []
+
+    def test_missing_date_param_returns_400(self, api_client, doctor_user):
+        response = api_client.get(
+            f"/api/doctors/{doctor_user.doctor_profile.pk}/available_slots/",
         )
 
         assert response.status_code == 400
